@@ -1,0 +1,30 @@
+{
+  "name": "ranges",
+  "version": "1.0.0",
+  "description": "range class for javascript",
+  "main": "src/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rhseung/ranges.git"
+  },
+  "keywords": [
+    "ranges"
+  ],
+  "author": "rhseung",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rhseung/ranges/issues"
+  },
+  "homepage": "https://github.com/rhseung/ranges#readme",
+  "devDependencies": {
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
+  }
+}
