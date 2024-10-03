@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { le, lt } from './operators';
+import { le, lt } from '../util';
 import { Lowest, Uppest } from './typing';
 
 describe('lt/le', () => {

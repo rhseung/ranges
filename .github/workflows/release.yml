@@ -1,0 +1,84 @@
+name: Release on version change
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # 4. Get the current version and name from package.json
+      - name: Get package version and name
+        id: get_package_info
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          NAME=$(jq -r '.name' package.json)
+          echo "Package name is $NAME and version is $VERSION"
+          echo "::set-output name=VERSION::$VERSION"
+          echo "::set-output name=NAME::$NAME"
+
+      # 5. Check if package.json was modified in the latest commit
+      - name: Check for version change
+        id: version_check
+        run: |
+          if git diff HEAD~1 HEAD --quiet -- package.json; then
+            echo "No changes in package.json, skipping release."
+            exit 0
+          else
+            echo "package.json has been modified, proceeding to release."
+          fi
+
+      # 6. Create the release
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: v${{ steps.get_package_info.outputs.VERSION }}
+          release_name: v${{ steps.get_package_info.outputs.VERSION }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 7. Rename and upload dist/all/index.js as {name}.js
+      - name: Rename and upload dist/all/index.js
+        run: |
+          cp dist/all/index.js ${{ steps.get_package_info.outputs.NAME }}.js
+        # Upload the renamed file to the release
+      - name: Upload renamed dist/all/index.js
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.get_package_info.outputs.NAME }}.js
+          asset_name: ${{ steps.get_package_info.outputs.NAME }}.js
+          asset_content_type: application/javascript
+
+      # 8. Compress dist/preserve folder as {name}-{version}.zip and upload
+      - name: Compress dist/preserve folder
+        run: |
+          zip -r ${{ steps.get_package_info.outputs.NAME }}-${{ steps.get_package_info.outputs.VERSION }}.zip dist/preserve
+        # Upload the compressed file to the release
+      - name: Upload dist/preserve zip
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.get_package_info.outputs.NAME }}-${{ steps.get_package_info.outputs.VERSION }}.zip
+          asset_name: ${{ steps.get_package_info.outputs.NAME }}-${{ steps.get_package_info.outputs.VERSION }}.zip
+          asset_content_type: application/zip

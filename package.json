@@ -1,13 +1,18 @@
 {
   "name": "ranges",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.0",
   "description": "range class for javascript",
-  "main": "src/index.js",
+  "main": "index.js",
   "directories": {
-    "test": "test"
+    "example": "./example",
+    "lib": "./src",
+    "dist": "./dist"
   },
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "build:all-in-one": "cross-env ALLINONE=true rollup --config rollup.config.mjs",
+    "build:no-all-in-one": "cross-env ALLINONE=false rollup --config rollup.config.mjs",
+    "build": "npm run build:all-in-one && npm run build:no-all-in-one"
   },
   "repository": {
     "type": "git",
@@ -23,6 +28,17 @@
   },
   "homepage": "https://github.com/rhseung/ranges#readme",
   "devDependencies": {
+    "@babel/plugin-transform-named-capturing-groups-regex": "^7.25.7",
+    "@babel/preset-env": "^7.25.7",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-typescript": "^12.1.0",
+    "babel-plugin-object-values-to-object-keys": "^1.0.2",
+    "babel-plugin-transform-es2017-object-entries": "^0.0.5",
+    "chalk": "^5.3.0",
+    "cross-env": "^7.0.3",
+    "rollup": "^4.24.0",
+    "rollup-plugin-dts": "^6.1.1",
+    "tslib": "^2.7.0",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",
     "vitest": "^2.1.1"

@@ -72,3 +72,8 @@ export class Lowest {
         return '-∞';
     }
 }
+
+export const inf = Uppest.INSTANCE;
+export const oo = Uppest.INSTANCE;
+export const ninf = Lowest.INSTANCE;
+export const noo = Lowest.INSTANCE;

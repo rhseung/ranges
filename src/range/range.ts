@@ -1,7 +1,7 @@
-import { BoundType, Lowest, Uppest, Comparable } from "./typing";
-import { le, lt, eq } from "./operators";
+import { BoundType, Lowest, Uppest, Comparable } from "../util/typing";
+import { le } from "../util/operator";
 
-// TODO: range(0, 1, 0.1) -> [0, 1) step 0.1
+// TODO: range(0, 1, 0.1) -> [0, 1) step 0.1, toFixed로 부동 소수점 오류를 최대한
 
 export class Range<T extends Comparable> {
     protected constructor(
@@ -128,7 +128,6 @@ export class Range<T extends Comparable> {
      * @returns |this|
      */
     get size(): number | bigint {
-        // TEST: 필요
         if (this.isEmpty())
             return 0;
         else if (this.lower === this.upper)
@@ -147,7 +146,6 @@ export class Range<T extends Comparable> {
         return Range.new<T>(this.lowerBound, this.lower, this.upper, this.upperBound);
     }
 
-    // TEST: 필요
     toString(): string {
         if (this.isEmpty())
             return '∅';
@@ -205,6 +203,10 @@ export class Range<T extends Comparable> {
 
     isUpperInfinite(): this is { upper: Uppest } {
         return this.upper instanceof Uppest;
+    }
+
+    isInfinite(): boolean {
+        return this.isUpperInfinite() || this.isLowerInfinite();
     }
 
     /**
@@ -492,7 +494,6 @@ export class IntRange extends Range<bigint> {
         return new EmptyIntRange();
     }
 
-    // TEST: 필요함
     override get size(): number | bigint {
         if (this.lower instanceof Lowest || this.upper instanceof Uppest)
             return Infinity;
@@ -516,7 +517,7 @@ export class IntRange extends Range<bigint> {
                 return 0n;
             else if (this.step < 0 && start < end)
                 return 0n;
-            else    // TEST: 필요함
+            else
                 return abs(end - start) / abs(this.step) + 1n;
         }
     }
@@ -525,7 +526,6 @@ export class IntRange extends Range<bigint> {
         return IntRange.new(this.lowerBound, this.lower, this.upper, this.upperBound, this.step);
     }
 
-    // TEST: 필요함
     override toString(): string {
         const size = this.size;
         const abs = (x: bigint) => x < 0n ? -x : x;
@@ -548,7 +548,6 @@ export class IntRange extends Range<bigint> {
         return this.copy();
     }
 
-    // TEST: 필요함
     toClosedRange(): IntRange {
         if (this.isEmpty())
             return IntRange.empty();
@@ -567,13 +566,11 @@ export class IntRange extends Range<bigint> {
             throw new RangeError('Cannot convert to closed range');
     }
     
-    // TEST: 필요함
     override isEmpty(): boolean {
         const size = this.size;
         return size === Infinity ? false : size <= 0n;
     }
 
-    // TEST: 필요함
     override equals(other: Range<bigint> | IntRange): boolean {
         if (other instanceof IntRange) {
             const a = this.toClosedRange();
@@ -596,21 +593,29 @@ export class IntRange extends Range<bigint> {
         if (this.isEmpty())
             return;
 
-        if (!(this.lower instanceof Lowest) && this.upper instanceof Uppest && this.step < 0n)
-            throw new RangeError('Cannot iterate (n, +∞) with a negative step');
-        if (this.lower instanceof Lowest && !(this.upper instanceof Uppest) && this.step > 0n)
-            throw new RangeError('Cannot iterate (-∞, n) with a positive step');
-        if (this.lower instanceof Lowest && this.lowerIsStart === true)
-            throw new RangeError('Cannot start from Lowest');
-        if (this.upper instanceof Uppest && this.lowerIsStart === false)
-            throw new RangeError('Cannot start from Uppest');
+        if (!(this.lower instanceof Lowest) && this.upper instanceof Uppest && this.step < 0n) {
+            // throw new RangeError('Cannot iterate (n, +∞) with a negative step');
+            return;
+        }
+        if (this.lower instanceof Lowest && !(this.upper instanceof Uppest) && this.step > 0n) {
+            // throw new RangeError('Cannot iterate (-∞, n) with a positive step');
+            return;
+        }
+        if (this.lower instanceof Lowest && this.lowerIsStart === true) {
+            // throw new RangeError('Cannot start from Lowest(-∞)');
+            return;
+        }
+        if (this.upper instanceof Uppest && this.lowerIsStart === false) {
+            // throw new RangeError('Cannot start from Uppest(+∞)');
+            return;
+        }
 
         const low = this.isLowerFinite() ? this.lowerBound === BoundType.CLOSED ? this.lower : this.lower + 1n : Lowest.INSTANCE;
         const up = this.isUpperFinite() ? this.upperBound === BoundType.CLOSED ? this.upper : this.upper - 1n : Uppest.INSTANCE;
 
         const tmp = this.lowerIsStart ? low : up;
         if (tmp instanceof Lowest || tmp instanceof Uppest)
-            throw new RangeError('Cannot start from Lowest or Uppest');
+            throw new RangeError('Cannot start from Lowest(-∞) or Uppest(+∞)');
 
         const start: bigint = tmp;
         const end: bigint | Lowest | Uppest = this.lowerIsStart ? up : low;
