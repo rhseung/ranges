@@ -55,14 +55,14 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_DEPLOY_KEY }}
 
-      # 7. Rename and upload dist/all/index.js as {name}.js
-      - name: Rename and upload dist/all/index.js
+      # 7. Rename and upload ./dist/all/index.js as {name}.js
+      - name: Rename and upload ./dist/all/index.js
         run: |
-          cp dist/all/index.js ${{ steps.get_package_info.outputs.NAME }}.js
+          cp ./dist/all/index.js ${{ steps.get_package_info.outputs.NAME }}.js
         # Upload the renamed file to the release
-      - name: Upload renamed dist/all/index.js
+      - name: Upload renamed ./dist/all/index.js
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
@@ -70,12 +70,12 @@ jobs:
           asset_name: ${{ steps.get_package_info.outputs.NAME }}.js
           asset_content_type: application/javascript
 
-      # 8. Compress dist/preserve folder as {name}-{version}.zip and upload
-      - name: Compress dist/preserve folder
+      # 8. Compress ./dist/preserve folder as {name}-{version}.zip and upload
+      - name: Compress ./dist/preserve folder
         run: |
-          zip -r ${{ steps.get_package_info.outputs.NAME }}-${{ steps.get_package_info.outputs.VERSION }}.zip dist/preserve
+          zip -r ${{ steps.get_package_info.outputs.NAME }}-${{ steps.get_package_info.outputs.VERSION }}.zip ./dist/preserve
         # Upload the compressed file to the release
-      - name: Upload dist/preserve zip
+      - name: Upload ./dist/preserve zip
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
