@@ -1,12 +1,17 @@
 name: Release on version change
 
+# GitHub Actions 설정 확인
+# 저장소 설정에서 GitHub Actions가 적절한 권한을 가지고 있는지 확인하세요.
+# Settings > Actions > General로 이동합니다.
+# Workflow permissions에서 Read and write permissions를 선택하고 저장합니다.
+
 on:
   push:
     paths:
       - 'package.json'  # package.json 파일이 변경될 때만 실행
 
 jobs:
-  check_version_change:
+  release_job:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -15,7 +20,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '18'  # Node.js 버전을 최신 안정화 버전으로 설정
+          node-version: '18'
 
       - name: Install dependencies
         run: npm install
@@ -24,49 +29,67 @@ jobs:
       - name: Build the project
         run: npm run build
 
-      - name: Get package.json version
-        id: get_version
+      # package.json에서 이름과 버전 가져오기
+      - name: Get package name and version
+        id: package_info
         run: |
+          name=$(jq -r '.name' < package.json)
           version=$(jq -r '.version' < package.json)
-          echo "::set-output name=version::$version"
+          echo "name=$name" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      # prerelease 여부 결정: version에 -가 포함되어 있으면 true
+      - name: Check if version is prerelease
+        id: prerelease_check
+        run: |
+          if [[ "${{ steps.package_info.outputs.version }}" == *"-"* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
 
       # dist/preserve 폴더 압축
       - name: Zip dist/preserve folder
         run: |
           mkdir -p release_files  # release_files 디렉터리 생성
-          zip -r release_files/dist-preserve.zip dist/preserve
+          zip -r release_files/${{ steps.package_info.outputs.name }}-${{ steps.package_info.outputs.version }}.zip dist/preserve
 
+      # dist/all/index.js 파일을 {name}.js로 변경
+      - name: Rename index.js to {name}.js
+        run: mv dist/all/index.js dist/all/${{ steps.package_info.outputs.name }}.js
+
+      # GitHub Release 생성
       - name: Create GitHub Release
-        id: create_release  # Release ID를 얻기 위해 ID를 부여
+        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub Token 설정
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}  # 릴리즈 태그
-          release_name: v${{ steps.get_version.outputs.version }}  # 릴리즈 이름
+          tag_name: v${{ steps.package_info.outputs.version }}  # 릴리즈 태그
+          release_name: v${{ steps.package_info.outputs.version }}  # 릴리즈 이름
           body: |
-            Automated release for version ${{ steps.get_version.outputs.version }}.
+            Automated release for version ${{ steps.package_info.outputs.version }}.
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.prerelease_check.outputs.prerelease }}  # prerelease 값 동적 설정
 
-      # dist/all/index.js 파일 업로드
-      - name: Upload dist/all/index.js to release
+      # dist/all/{name}.js 파일 업로드
+      - name: Upload {name}.js to release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub Token 설정
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: dist/all/index.js
-          asset_name: index.js
+          asset_path: dist/all/${{ steps.package_info.outputs.name }}.js
+          asset_name: ${{ steps.package_info.outputs.name }}.js
           asset_content_type: application/javascript
 
-      # dist/preserve.zip 파일 업로드
-      - name: Upload dist/preserve.zip to release
+      # dist/preserve/{name}-{version}.zip 파일 업로드
+      - name: Upload {name}-{version}.zip to release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub Token 설정
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release_files/dist-preserve.zip
-          asset_name: dist-preserve.zip
+          asset_path: release_files/${{ steps.package_info.outputs.name }}-${{ steps.package_info.outputs.version }}.zip
+          asset_name: ${{ steps.package_info.outputs.name }}-${{ steps.package_info.outputs.version }}.zip
           asset_content_type: application/zip
