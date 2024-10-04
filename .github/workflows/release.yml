@@ -48,11 +48,16 @@ jobs:
             echo "prerelease=false" >> $GITHUB_OUTPUT
           fi
 
-      # dist/preserve 폴더 압축
-      - name: Zip dist/preserve folder
+      # 압축 전에 파일들을 정리하고, 이름에 해당하는 폴더로 이동시킴
+      - name: Prepare files for zipping
         run: |
-          mkdir -p release_files  # release_files 디렉터리 생성
-          zip -r release_files/${{ steps.package_info.outputs.name }}-${{ steps.package_info.outputs.version }}.zip dist/preserve
+          mkdir -p ${{ steps.package_info.outputs.name }}  # {name} 폴더 생성
+          cp -r dist/preserve/* ${{ steps.package_info.outputs.name }}/  # 소스코드를 {name} 폴더로 이동
+
+      # {name} 폴더만 압축
+      - name: Zip {name} folder
+        run: |
+          zip -r ${{ steps.package_info.outputs.name }}-${{ steps.package_info.outputs.version }}.zip ${{ steps.package_info.outputs.name }}
 
       # dist/all/index.js 파일을 {name}.js로 변경
       - name: Rename index.js to {name}.js
@@ -83,13 +88,13 @@ jobs:
           asset_name: ${{ steps.package_info.outputs.name }}.js
           asset_content_type: application/javascript
 
-      # dist/preserve/{name}-{version}.zip 파일 업로드
+      # {name}-{version}.zip 파일 업로드
       - name: Upload {name}-{version}.zip to release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub Token 설정
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release_files/${{ steps.package_info.outputs.name }}-${{ steps.package_info.outputs.version }}.zip
+          asset_path: ${{ steps.package_info.outputs.name }}-${{ steps.package_info.outputs.version }}.zip
           asset_name: ${{ steps.package_info.outputs.name }}-${{ steps.package_info.outputs.version }}.zip
           asset_content_type: application/zip
