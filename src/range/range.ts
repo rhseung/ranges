@@ -1,5 +1,5 @@
-import { BoundType, Lowest, Uppest, Comparable } from "../util/typing";
-import { le } from "../util/operator";
+import { BoundType, Lowest, Uppest, Comparable } from "../util";
+import { le } from "../util";
 
 // TODO: range(0, 1, 0.1) -> [0, 1) step 0.1, toFixed로 부동 소수점 오류를 최대한
 
@@ -187,6 +187,32 @@ export class Range<T extends Comparable> {
             return IntRange.downTo(isInteger(this.lower) ? this.lowerBound : BoundType.CLOSED, lowerToBigInt(this.lower));
         else
             return IntRange.new(isInteger(this.lower) ? this.lowerBound : BoundType.CLOSED, lowerToBigInt(this.lower), upperToBigInt(this.upper), isInteger(this.upper) ? this.upperBound : BoundType.CLOSED);
+    }
+
+    toFloatRange(): FloatRange {
+        if (this.isEmpty())
+            return FloatRange.empty();
+
+        const isFloat = (value: Comparable): value is number =>
+            typeof value === 'number';
+
+        const toNumber = (value: Exclude<Comparable, number>): number =>
+            value instanceof Date ? value.getTime() : Number(value);
+
+        const lowerToFloat = (value: Comparable): number =>
+            typeof value === 'number' ? value : toNumber(value);
+
+        const upperToFloat = (value: Comparable): number =>
+            typeof value === 'number' ? value : toNumber(value);
+
+        if (!this.isLowerFinite() && !this.isUpperFinite())
+            return FloatRange.all();
+        else if (!this.isLowerFinite() && this.isUpperFinite())
+            return FloatRange.upTo(upperToFloat(this.upper), isFloat(this.upper) ? this.upperBound : BoundType.CLOSED);
+        else if (this.isLowerFinite() && !this.isUpperFinite())
+            return FloatRange.downTo(isFloat(this.lower) ? this.lowerBound : BoundType.CLOSED, lowerToFloat(this.lower));
+        else
+            return FloatRange.new(isFloat(this.lower) ? this.lowerBound : BoundType.CLOSED, lowerToFloat(this.lower), upperToFloat(this.upper), isFloat(this.upper) ? this.upperBound : BoundType.CLOSED);
     }
 
     isLowerFinite(): this is { lower: T } {
@@ -613,7 +639,7 @@ export class IntRange extends Range<bigint> {
         const low = this.isLowerFinite() ? this.lowerBound === BoundType.CLOSED ? this.lower : this.lower + 1n : Lowest.INSTANCE;
         const up = this.isUpperFinite() ? this.upperBound === BoundType.CLOSED ? this.upper : this.upper - 1n : Uppest.INSTANCE;
 
-        const tmp = this.lowerIsStart ? low : up;
+        const tmp = this.lowerIsStart ? low : up;   // typescript typeguard 때문에 이렇게 함
         if (tmp instanceof Lowest || tmp instanceof Uppest)
             throw new RangeError('Cannot start from Lowest(-∞) or Uppest(+∞)');
 
@@ -646,6 +672,9 @@ export class IntRange extends Range<bigint> {
     }
 }
 
+// TODO: toOpenedRange
+// TODO: changeBoundType - auto transform
+
 class EmptyIntRange extends IntRange {
     constructor() {
         // @ts-ignore
@@ -658,6 +687,212 @@ class EmptyIntRange extends IntRange {
 
     copy(): EmptyIntRange {
         return new EmptyIntRange();
+    }
+
+    toString(): string {
+        return '∅';
+    }
+
+    isEmpty(): boolean {
+        return true;
+    }
+}
+
+// TODO: FloatRange 구현
+// TODO: DateRange 구현
+// TODO: StringRange 구현
+
+// @ts-ignore
+export class FloatRange extends Range<number> {
+    protected constructor(
+        lower: number | Lowest,
+        lowerBound: BoundType,
+        upper: number | Uppest,
+        upperBound: BoundType,
+        protected step: number,
+        private lowerIsStart: boolean
+    ) {
+        super(lower, lowerBound, upper, upperBound);
+    }
+    
+    static override new(lowerBound: BoundType | "[" | "(", lower: number | Lowest, upper: number | Uppest, upperBound: ")" | "]" | BoundType, step: number = 1, lowerIsStart?: boolean): FloatRange {
+        const lowerBoundType = lowerBound instanceof BoundType ? lowerBound : BoundType.parse(lowerBound);
+        const upperBoundType = upperBound instanceof BoundType ? upperBound : BoundType.parse(upperBound);
+
+        if (lower instanceof Lowest && lowerBoundType === BoundType.CLOSED)
+            throw new RangeError(`Lowest(${Lowest.INSTANCE}) cannot be closed`);
+        if (upper instanceof Uppest && upperBoundType === BoundType.CLOSED)
+            throw new RangeError(`Uppest(${Uppest.INSTANCE}) cannot be closed`);
+
+        if (step === 0)
+            throw new RangeError('Step cannot be zero');
+
+        lowerIsStart = lowerIsStart ?? step > 0;
+
+        // start를 open에서 할 수 없음
+        // FIXME: 근데 아래 조건은 루프를 돌 때는 문제가 되지만, 그냥 구간 객체로서만 사용할 때는 문제가 되지 않음
+        if (lowerIsStart && lowerBoundType === BoundType.OPEN)
+            throw new RangeError('Cannot start from open bound');
+        else if (!lowerIsStart && upperBoundType === BoundType.OPEN)
+            throw new RangeError('Cannot start from open bound');
+
+        const ret = new FloatRange(lower, lowerBoundType, upper, upperBoundType, step, lowerIsStart);
+        return ret.isEmpty() ? FloatRange.empty() : ret;
+    }
+
+    static override open(lower: number | Lowest, upper: number | Uppest, step: number = 1, lowerIsStart?: boolean): FloatRange {
+        return FloatRange.new('(', lower, upper, ')', step, lowerIsStart);
+    }
+
+    static override closed(lower: number, upper: number, step: number = 1, lowerIsStart?: boolean): FloatRange {
+        return FloatRange.new('[', lower, upper, ']', step, lowerIsStart);
+    }
+
+    static override closedOpen(lower: number, upper: number | Uppest, step: number = 1, lowerIsStart?: boolean): FloatRange {
+        return FloatRange.new('[', lower, upper, ')', step, lowerIsStart);
+    }
+
+    static override openClosed(lower: number | Lowest, upper: number, step: number = 1, lowerIsStart?: boolean): FloatRange {
+        return FloatRange.new('(', lower, upper, ']', step, lowerIsStart);
+    }
+
+    static override downTo(boundType: BoundType | '[' | '(', lower: number | Lowest, step: number = 1, lowerIsStart: boolean = true): FloatRange {
+        return FloatRange.new(boundType, lower, Uppest.INSTANCE, ')', step, lowerIsStart);
+    }
+
+    static override greaterThan(lower: number | Lowest, step: number = 1, lowerIsStart: boolean = true): FloatRange {
+        return FloatRange.downTo('(', lower, step, lowerIsStart);
+    }
+
+    static override atLeast(lower: number, step: number = 1, lowerIsStart: boolean = true): FloatRange {
+        return FloatRange.downTo('[', lower, step, lowerIsStart);
+    }
+
+    static override upTo(upper: number | Uppest, boundType: ')' | ']' | BoundType, step: number = -1, lowerIsStart: boolean = false): FloatRange {
+        return FloatRange.new('(', Lowest.INSTANCE, upper, boundType, step, lowerIsStart);
+    }
+
+    static override lessThan(upper: number | Uppest, step: number = -1, lowerIsStart: boolean = false): FloatRange {
+        return FloatRange.upTo(upper, ')', step, lowerIsStart);
+    }
+
+    static override atMost(upper: number, step: number = -1, lowerIsStart: boolean = false): FloatRange {
+        return FloatRange.upTo(upper, ']', step, lowerIsStart);
+    }
+
+    static override all(): FloatRange {
+        return FloatRange.open(Lowest.INSTANCE, Uppest.INSTANCE);
+    }
+
+    static override empty(): EmptyFloatRange {
+        return new EmptyFloatRange();
+    }
+
+    override get size(): number {
+        if (this.lower instanceof Lowest || this.upper instanceof Uppest)
+            return Infinity;
+        else if (this.step > 0 !== this.lowerIsStart)
+            return 0;
+        else {
+            // return this.upper - this.lower + 1n
+            //     - (this.lowerBound === BoundType.OPEN ? 1n : 0n)
+            //     - (this.upperBound === BoundType.OPEN ? 1n : 0n);
+            // 위에 있는 것은 step이 1일 때의 상황임
+
+            const lower = this.lowerBound === BoundType.CLOSED ? this.lower : this.lower + 1;
+            const upper = this.upperBound === BoundType.CLOSED ? this.upper : this.upper - 1;
+
+            const start = this.lowerIsStart ? lower : upper;
+            const end = this.lowerIsStart ? upper : lower;
+
+            if (this.lowerIsStart && this.lowerBoundType === BoundType.OPEN)
+                throw new RangeError('Cannot start from open bound');
+            else if (!this.lowerIsStart && this.upperBoundType === BoundType.OPEN)
+                throw new RangeError('Cannot start from open bound');
+
+            if (this.step > 0 && start > end)
+                return 0;
+            else if (this.step < 0 && start < end)
+                return 0;
+            else
+                return Math.floor(Math.abs(end - start) / Math.abs(this.step)) + 1;
+        }
+    }
+
+    override copy(): FloatRange {
+        return FloatRange.new(this.lowerBound, this.lower, this.upper, this.upperBound, this.step);
+    }
+
+    override toFloatRange(): FloatRange {
+        return this.copy();
+    }
+
+    override isEmpty(): boolean {
+        const size = this.size;
+        return size === Infinity ? false : size <= 0;
+    }
+
+    override equals(other: Range<number> | FloatRange): boolean {
+        if (other instanceof FloatRange)
+            return this.lower === other.lower && this.upper === other.upper && this.lowerBound === other.lowerBound && this.upperBound === other.upperBound && this.step === other.step;
+        else
+            return super.equals(other);
+    }
+
+    steps(step: number, lowerIsStart?: boolean): FloatRange {
+        return FloatRange.new(this.lowerBound, this.lower, this.upper, this.upperBound, step, lowerIsStart);
+    }
+
+    *[Symbol.iterator](): Generator<number, undefined, void> {
+        if (this.isEmpty())
+            return;
+
+        if (!(this.lower instanceof Lowest) && this.upper instanceof Uppest && this.step < 0)
+            return;
+        if (this.lower instanceof Lowest && !(this.upper instanceof Uppest) && this.step > 0)
+            return;
+        if (this.lower instanceof Lowest && this.lowerIsStart === true)
+            return;
+        if (this.upper instanceof Uppest && this.lowerIsStart === false)
+            return;
+
+        const low = this.lower;
+        const up = this.upper;
+
+        const tmp = this.lowerIsStart ? low : up;
+        if (tmp instanceof Lowest || tmp instanceof Uppest)
+            throw new RangeError('Cannot start from Lowest(-∞) or Uppest(+∞)');
+        
+        const start: number = tmp;
+        const end: number | Lowest | Uppest = this.lowerIsStart ? up : low;
+
+        // open에서 시작할 수 없음
+        if (this.lowerBound === BoundType.OPEN && start === this.lower)
+            throw new RangeError('Cannot start from open bound');
+        else if (this.upperBound === BoundType.OPEN && start === this.upper)
+            throw new RangeError('Cannot start from open bound');
+
+        const getPrecision = (value: number): number => String(value).split('.')[1]?.length ?? 0;
+        const precision = Math.max(getPrecision(start), getPrecision(this.step));
+
+        for (let i = start; this.step > 0 ? le(i, end) : le(end, i); i = Number((i + this.step).toFixed(precision))) {
+            yield i;
+        }
+    }
+}
+
+class EmptyFloatRange extends FloatRange {
+    constructor() {
+        // @ts-ignore
+        super(0, BoundType.OPEN, 0, BoundType.OPEN);
+    }
+
+    override get size(): number {
+        return 0;
+    }
+
+    copy(): EmptyFloatRange {
+        return new EmptyFloatRange();
     }
 
     toString(): string {

@@ -1,6 +1,6 @@
 import { IntRange } from "../range";
-import { le } from "../util/operator";
-import { Lowest, Uppest, inf, ninf } from "../util/typing";
+import { le } from "../util";
+import { Lowest, Uppest, inf, ninf } from "../util";
 
 type PositiveInfinity = Uppest | '+inf' | '+oo' | '+∞' | 'inf' | 'oo' | '∞';
 type NegativeInfinity = Lowest | '-inf' | '-oo' | '-∞';
@@ -8,17 +8,24 @@ type NegativeInfinity = Lowest | '-inf' | '-oo' | '-∞';
 /**
  * @returns [a, b), which is common in programming languages.
  */
-export function range(end: bigint | PositiveInfinity | NegativeInfinity): IntRange;
-export function range(start: bigint, end: bigint | PositiveInfinity | NegativeInfinity): IntRange;
-export function range(start: bigint, end: bigint | PositiveInfinity | NegativeInfinity, step: bigint): IntRange;
-
-// TODO: range("[3, 5)")
+export function range(end: number | bigint | PositiveInfinity | NegativeInfinity): IntRange;
+export function range(start: number | bigint, end: number | bigint | PositiveInfinity | NegativeInfinity): IntRange;
+export function range(start: number | bigint, end: number | bigint | PositiveInfinity | NegativeInfinity, step: number | bigint): IntRange;
 
 export function range(
-    startOrEnd: bigint | PositiveInfinity | NegativeInfinity,
-    end?: bigint | PositiveInfinity | NegativeInfinity,
-    step: bigint = 1n
+    startOrEnd: number | bigint | PositiveInfinity | NegativeInfinity,
+    end?: number | bigint | PositiveInfinity | NegativeInfinity,
+    step: number | bigint = 1n
 ): IntRange {
+    if (typeof startOrEnd === 'number' && Number.isInteger(startOrEnd))
+        startOrEnd = BigInt(startOrEnd);
+    if (typeof end === 'number' && Number.isInteger(end))
+        end = BigInt(end);
+    if (typeof step === 'number' && Number.isInteger(step))
+        step = BigInt(step);
+
+    // TODO: floatRange 구현
+
     let _startOrEnd: bigint | Uppest | Lowest;
     let _end: bigint | Uppest | Lowest | undefined = undefined;
     

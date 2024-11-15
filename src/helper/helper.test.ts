@@ -8,32 +8,32 @@ describe('range', () => {
     // range(1, 5, -2)
 
     test('range(5) -> [0, 5)', () => {
-        const r = range(5n);
+        const r = range(5);
         expect([...r]).toEqual([0n, 1n, 2n, 3n, 4n]);
     });
 
     test('range(1, 5)', () => {
-        const r = range(1n, 5n);
+        const r = range(1, 5);
         expect([...r]).toEqual([1n, 2n, 3n, 4n]);
     });
 
     test('range(1, 5, 2)', () => {
-        const r = range(1n, 5n, 2n);
+        const r = range(1, 5, 2);
         expect([...r]).toEqual([1n, 3n]);
     });
 
     test('range(5, 1, -1)', () => {
-        const r = range(5n, 1n, -1n);
+        const r = range(5, 1, -1);
         expect([...r]).toEqual([5n, 4n, 3n, 2n]);
     });
 
     test('range(5, 1, -2)', () => {
-        const r = range(5n, 1n, -2n);
+        const r = range(5, 1, -2);
         expect([...r]).toEqual([5n, 3n]);
     });
 
     test('range(1, 5, -2)', () => {
-        const r = range(1n, 5n, -2n);
+        const r = range(1, 5, -2);
         console.log([...r]);
         
         expect(r.isEmpty()).toBe(true);
@@ -63,7 +63,7 @@ describe('range', () => {
     });
 
     test('range(0, -inf, -1)', () => {
-        const r = range(0n, ninf, -1n);
+        const r = range(0, ninf, -1);
         const result: bigint[] = [];
         for (const i of r) {
             result.push(i);
@@ -74,7 +74,7 @@ describe('range', () => {
     });
 
     test('range(5, "-oo", -1)', () => {
-        const r = range(5n, '-oo', -1n);
+        const r = range(5, '-oo', -1);
         const result: bigint[] = [];
         for (const i of r) {
             result.push(i);

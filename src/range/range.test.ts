@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { Range, IntRange } from "./range";
-import { BoundType, inf, ninf } from '../util/typing';
+import { Range, IntRange, FloatRange } from "./range";
+import { BoundType, inf, ninf } from "../util";
 
 describe('Range', () => {
     describe('Range constructor', () => {
@@ -2026,6 +2026,95 @@ describe('IntRange', () => {
         });
     });
 })
+
+describe('FloatRange', () => {
+    describe('FloatRange constructor', () => {
+        test('[1.2, 3.3]', () => {
+            const ret = FloatRange.closed(1.2, 3.3);
+            const expected = FloatRange.new(BoundType.CLOSED, 1.2, 3.3, BoundType.CLOSED);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('[1.2, 3.3]');
+        });
+
+        test('(1.2, 3.3)', () => {
+            const ret = FloatRange.open(1.2, 3.3);
+            const expected = FloatRange.new(BoundType.OPEN, 1.2, 3.3, BoundType.OPEN);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('(1.2, 3.3)');
+        });
+
+        test('[1.2, 3.3)', () => {
+            const ret = FloatRange.closedOpen(1.2, 3.3);
+            const expected = FloatRange.new(BoundType.CLOSED, 1.2, 3.3, BoundType.OPEN);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('[1.2, 3.3)');
+        });
+
+        test('(1.2, 3.3]', () => {
+            const ret = FloatRange.openClosed(1.2, 3.3);
+            const expected = FloatRange.new(BoundType.OPEN, 1.2, 3.3, BoundType.CLOSED);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('(1.2, 3.3]');
+        });
+
+        test('[1.2, +∞)', () => {
+            const ret = FloatRange.atLeast(1.2);
+            const expected = FloatRange.new(BoundType.CLOSED, 1.2, Infinity, BoundType.CLOSED);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('[1.2, +∞)');
+        });
+
+        test('[0, +∞)', () => {
+            const ret = FloatRange.atLeast(0);
+            const expected = FloatRange.new(BoundType.CLOSED, 0, Infinity, BoundType.CLOSED);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('ℝ⁺');
+        });
+
+        test('(0, +∞)', () => {
+            const ret = FloatRange.greaterThan(0);
+            const expected = FloatRange.new(BoundType.OPEN, 0, Infinity, BoundType.CLOSED);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('ℝ⁺');
+        });
+
+        test('(-∞, 3.3]', () => {
+            const ret = FloatRange.atMost(3.3);
+            const expected = FloatRange.new(BoundType.CLOSED, -Infinity, 3.3, BoundType.CLOSED);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('(−∞, 3.3]');
+        });
+
+        test('(-∞, 0]', () => {
+            const ret = FloatRange.atMost(0);
+            const expected = FloatRange.new(BoundType.CLOSED, -Infinity, 0, BoundType.CLOSED);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('ℝ⁻');
+        });
+
+        test('(-∞, 0)', () => {
+            const ret = FloatRange.lessThan(0);
+            const expected = FloatRange.new(BoundType.CLOSED, -Infinity, 0, BoundType.OPEN);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('ℝ⁻');
+        });
+
+        test('(-∞, +∞)', () => {
+            const ret = FloatRange.all();
+            const expected = FloatRange.new(BoundType.OPEN, -Infinity, Infinity, BoundType.OPEN);
+            expect(ret.equals(expected)).toBe(true);
+            expect(ret.toString()).toBe('ℝ');
+        });
+
+        test('invalid [-∞, 3.3]', () => {
+            expect(() => FloatRange.closed(-Infinity, 3.3)).toThrow(RangeError);
+        });
+
+        test('invalid (1.2, ∞]', () => {
+            expect(() => FloatRange.open(1.2, Infinity)).toThrow(RangeError);
+        });
+    });
+});
 
 describe('IntRange vs Range', () => {
     // IntRange는 (4, 5)도 공집합이고 (4, 4)도 공집합이며, (4, 5]부터 공집합이 아님

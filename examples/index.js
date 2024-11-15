@@ -1,4 +1,4 @@
-const { range, inf, ninf } = require('ranges');
+const { range, inf, ninf } = require('../dist/all');
 
 for (const num of range(5)) {
     console.log(num); // Output: 0, 1, 2, 3, 4
